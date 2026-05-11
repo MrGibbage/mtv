@@ -8,6 +8,9 @@ services:
     volumes:
       - mtv-data:/app/data
       - /mnt/pierhouse:/mnt/pierhouse:ro
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DATA_DIR=/app/data
       - MEDIA_DIR=/mnt/pierhouse/media/Music Videos - Alternative

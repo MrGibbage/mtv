@@ -21,6 +21,7 @@ def init_db():
                 lastfm_bio      TEXT,
                 rating          INTEGER NOT NULL DEFAULT 0,
                 play_count      INTEGER NOT NULL DEFAULT 0,
+                enriched_at     TIMESTAMP,
                 created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             CREATE TABLE IF NOT EXISTS play_history (
@@ -30,6 +31,11 @@ def init_db():
             );
             CREATE INDEX IF NOT EXISTS idx_videos_artist ON videos(artist);
         """)
+        # Migration: add enriched_at to pre-existing databases
+        try:
+            conn.execute("ALTER TABLE videos ADD COLUMN enriched_at TIMESTAMP")
+        except Exception:
+            pass  # column already exists
 
 
 @contextmanager

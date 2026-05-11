@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/       ./app/
 COPY templates/ ./templates/
+COPY enrich.py  ./enrich.py
 
 ENV DATA_DIR=/app/data
 ENV MEDIA_DIR="/mnt/pierhouse/media/Music Videos - Alternative"
