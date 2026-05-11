@@ -1,0 +1,16 @@
+services:
+  mtv:
+    build: .
+    container_name: mtv
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - mtv-data:/app/data
+      - /mnt/pierhouse:/mnt/pierhouse:ro
+    environment:
+      - DATA_DIR=/app/data
+      - MEDIA_DIR=/mnt/pierhouse/media/Music Videos - Alternative
+
+volumes:
+  mtv-data:

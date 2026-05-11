@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>MTV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      min-height: 100dvh;
+      background: #0a0a0a;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      overflow-x: hidden;
+    }
+
+    .card {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    /* Album art */
+    .art-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: #111;
+    }
+    .art-wrap img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transition: opacity 0.4s ease;
+    }
+    .art-placeholder {
+      position: absolute; inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+      font-weight: 800;
+      color: rgba(255,255,255,0.12);
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+
+    /* Info */
+    .info {
+      flex: 1;
+      padding: 24px 20px 12px;
+    }
+    .artist {
+      font-size: 1.7rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .artist a { color: #fff; text-decoration: none; }
+    .artist a:active { opacity: 0.7; }
+    .title {
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+    .year {
+      display: inline-block;
+      font-size: 0.78rem;
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.55);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* Rating */
+    .rating {
+      display: flex;
+      gap: 12px;
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .btn-rate {
+      flex: 1;
+      padding: 18px 12px;
+      border: 2px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      background: transparent;
+      color: rgba(255,255,255,0.4);
+      font-size: 1.75rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-rate:active { transform: scale(0.93); }
+    .btn-rate.up   { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.1); }
+    .btn-rate.down { border-color: #f87171; color: #f87171; background: rgba(248,113,113,0.1); }
+
+    /* Status bar */
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px;
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.28);
+      letter-spacing: 0.04em;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 2s infinite;
+    }
+    .dot.off { background: #555; animation: none; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="art-wrap">
+      <div class="art-placeholder" id="art-ph">♪</div>
+      <img id="art" src="" alt="" style="display:none">
+    </div>
+
+    <div class="info">
+      <div class="artist"><a id="artist-link" href="#">—</a></div>
+      <div class="title"  id="title">Waiting for TV…</div>
+      <span class="year"  id="year"  style="display:none"></span>
+    </div>
+
+    <div class="rating">
+      <button class="btn-rate" id="btn-up"   onclick="rate(1)">👍</button>
+      <button class="btn-rate" id="btn-down" onclick="rate(-1)">👎</button>
+    </div>
+
+    <div class="status">
+      <div class="dot off" id="dot"></div>
+      <span id="status-label">Connecting…</span>
+    </div>
+  </div>
+
+  <script>
+    let currentId     = null;
+    let currentRating = 0;
+    let evtSource     = null;
+
+    function update(data) {
+      currentId     = data.id;
+      currentRating = data.rating ?? 0;
+
+      const art = document.getElementById('art');
+      const ph  = document.getElementById('art-ph');
+      if (data.lastfm_art_url) {
+        art.src          = data.lastfm_art_url;
+        art.style.display = '';
+        ph.style.display  = 'none';
+      } else {
+        art.style.display = 'none';
+        ph.style.display  = 'flex';
+        ph.textContent    = (data.artist || '?')[0].toUpperCase();
+      }
+
+      const link   = document.getElementById('artist-link');
+      link.textContent = data.artist || 'Unknown';
+      link.href        = '/artist/' + encodeURIComponent(data.artist || '');
+
+      document.getElementById('title').textContent = data.title || '';
+
+      const yearEl = document.getElementById('year');
+      if (data.year) {
+        yearEl.textContent    = data.year;
+        yearEl.style.display  = '';
+      } else {
+        yearEl.style.display  = 'none';
+      }
+
+      renderRating(currentRating);
+    }
+
+    function renderRating(r) {
+      document.getElementById('btn-up').className   = 'btn-rate' + (r ===  1 ? ' up'   : '');
+      document.getElementById('btn-down').className = 'btn-rate' + (r === -1 ? ' down' : '');
+    }
+
+    async function rate(val) {
+      if (currentId === null) return;
+      const next = (currentRating === val) ? 0 : val;
+      currentRating = next;
+      renderRating(next);
+      await fetch(`/api/rate/${currentId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: next }),
+      });
+    }
+
+    function setStatus(live) {
+      document.getElementById('dot').className         = 'dot' + (live ? '' : ' off');
+      document.getElementById('status-label').textContent = live ? 'Live' : 'Reconnecting…';
+    }
+
+    function connect() {
+      evtSource          = new EventSource('/api/events');
+      evtSource.onopen   = () => setStatus(true);
+      evtSource.onmessage = e => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'now-playing') update(data);
+      };
+      evtSource.onerror  = () => {
+        setStatus(false);
+        evtSource.close();
+        setTimeout(connect, 3000);
+      };
+    }
+
+    // Hydrate from current state before SSE connects
+    fetch('/api/now-playing')
+      .then(r => r.json())
+      .then(d => { if (d.playing) update(d); });
+
+    connect();
+  </script>
+</body>
+</html>

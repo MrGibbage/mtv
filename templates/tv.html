@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTV</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+
+    #player {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    #overlay {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      padding: 60px 56px 48px;
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      color: #fff;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      transition: opacity 0.8s ease;
+      pointer-events: none;
+    }
+    #overlay.hidden { opacity: 0; }
+
+    #now-artist {
+      font-size: 2rem;
+      font-weight: 700;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.9);
+      margin-bottom: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #now-title {
+      font-size: 1.25rem;
+      font-weight: 400;
+      opacity: 0.85;
+      text-shadow: 0 1px 6px rgba(0,0,0,0.9);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #now-year {
+      font-size: 0.9rem;
+      opacity: 0.55;
+      margin-top: 6px;
+    }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.25);
+      font-family: 'Helvetica Neue', sans-serif;
+      font-size: 0.9rem;
+      letter-spacing: 0.2em;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">LOADING</div>
+  <video id="player" preload="auto" playsinline></video>
+
+  <div id="overlay" class="hidden">
+    <div id="now-artist"></div>
+    <div id="now-title"></div>
+    <div id="now-year"></div>
+  </div>
+
+  <script>
+    const player  = document.getElementById('player');
+    const overlay = document.getElementById('overlay');
+    const loading = document.getElementById('loading');
+    let overlayTimer = null;
+
+    function showOverlay(data) {
+      document.getElementById('now-artist').textContent = data.artist || '';
+      document.getElementById('now-title').textContent  = data.title  || '';
+      document.getElementById('now-year').textContent   = data.year   || '';
+      overlay.classList.remove('hidden');
+      clearTimeout(overlayTimer);
+      overlayTimer = setTimeout(() => overlay.classList.add('hidden'), 5000);
+    }
+
+    async function advance() {
+      try {
+        const res = await fetch('/api/advance', { method: 'POST' });
+        if (!res.ok) { setTimeout(advance, 3000); return; }
+        const data = await res.json();
+        loading.style.display = 'none';
+        showOverlay(data);
+        player.src = `/video/${data.id}`;
+        const p = player.play();
+        if (p !== undefined) {
+          p.catch(() => {
+            loading.textContent = 'CLICK TO PLAY';
+            loading.style.display = '';
+            loading.style.cursor = 'pointer';
+            loading.onclick = () => { player.play(); loading.style.display = 'none'; };
+          });
+        }
+      } catch (e) {
+        console.error('advance failed', e);
+        setTimeout(advance, 3000);
+      }
+    }
+
+    player.addEventListener('ended', advance);
+    player.addEventListener('error', () => setTimeout(advance, 2000));
+
+    document.addEventListener('keydown', e => {
+      if (e.key === ' ') { e.preventDefault(); player.paused ? player.play() : player.pause(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); advance(); }
+      if (e.key === 'f' || e.key === 'F') {
+        document.fullscreenElement
+          ? document.exitFullscreen()
+          : document.documentElement.requestFullscreen();
+      }
+    });
+
+    // Click anywhere to show overlay briefly
+    document.addEventListener('click', () => {
+      overlay.classList.remove('hidden');
+      clearTimeout(overlayTimer);
+      overlayTimer = setTimeout(() => overlay.classList.add('hidden'), 5000);
+    });
+
+    advance();
+  </script>
+</body>
+</html>
